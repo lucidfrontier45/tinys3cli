@@ -1,0 +1,58 @@
+package tinys3cli
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"net/url"
+	"strings"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+)
+
+func CreateClient() *s3.Client {
+	// Load the Shared AWS Configuration (~/.aws/config)
+	cfg, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Create an Amazon S3 service client
+	return s3.NewFromConfig(cfg)
+
+}
+
+func parseS3URI(uri_str string) (string, string, error) {
+	uri, err := url.Parse(uri_str)
+
+	if err != nil {
+		return "", "", err
+	}
+
+	if strings.ToLower(uri.Scheme) != "s3" {
+		return "", "", fmt.Errorf("invalid scheme %s", uri.Scheme)
+	}
+
+	path := ""
+	if len(uri.Path) > 0 {
+		path = uri.Path[1:]
+	}
+
+	return uri.Host, path, nil
+}
+
+func ListObjects(client *s3.Client, uri_str string) (*s3.ListObjectsV2Output, error) {
+	bucket_name, path, err := parseS3URI(uri_str)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Get the first page of results for ListObjectsV2 for a bucket
+	return client.ListObjectsV2(context.TODO(), &s3.ListObjectsV2Input{
+		Bucket: aws.String(bucket_name),
+		Prefix: aws.String(path),
+	})
+}
