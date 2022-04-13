@@ -16,6 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 func CreateClient() *s3.Client {
@@ -131,7 +132,7 @@ func doDownload(client *s3.Client, localPath, remotePath, bucketName string) err
 	defer fp.Close()
 
 	n, err := io.Copy(fp, output.Body)
-	log.Printf("written %d bytes tp %s", n, localPath)
+	log.Printf("written %d bytes to %s", n, localPath)
 
 	return err
 }
@@ -151,20 +152,30 @@ func DownloadObjects(client *s3.Client, localPath, remotePath, bucketName string
 			return err
 		}
 
+		var mux sync.Mutex
+		var wg sync.WaitGroup
+
 		for _, object := range listResult.Contents {
-			log.Printf("key=%s size=%d", aws.ToString(object.Key), object.Size)
-			dirPath, fileName := path.Split(*object.Key)
-			dirPath = path.Join(localPath, dirPath)
-			err = os.MkdirAll(dirPath, os.ModePerm)
-			if err != nil {
-				log.Printf("error on %s, %s", *object.Key, err)
-			}
-			filePath := path.Join(dirPath, fileName)
-			err = doDownload(client, filePath, *object.Key, bucketName)
-			if err != nil {
-				log.Printf("error on %s, %s", *object.Key, err)
-			}
+			wg.Add(1)
+			go func(obj types.Object) {
+				defer wg.Done()
+				dirPath, fileName := path.Split(*obj.Key)
+				dirPath = path.Join(localPath, dirPath)
+				mux.Lock()
+				err = os.MkdirAll(dirPath, os.ModePerm)
+				mux.Unlock()
+				if err != nil {
+					log.Printf("error on %s, %s", *obj.Key, err)
+				}
+
+				filePath := path.Join(dirPath, fileName)
+				err = doDownload(client, filePath, *obj.Key, bucketName)
+				if err != nil {
+					log.Printf("error on %s, %s", *obj.Key, err)
+				}
+			}(object)
 		}
+		wg.Wait()
 
 	} else {
 		splt := strings.Split(remotePath, "/")

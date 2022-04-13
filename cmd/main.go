@@ -28,26 +28,25 @@ func main() {
 			log.Printf("key=%s size=%d", aws.ToString(object.Key), object.Size)
 		}
 	case "get":
-		uriStr := args[1]
+		var uriStr, localPath string
+		var recursive bool
+
+		if args[1] == "-r" {
+			uriStr = args[2]
+			localPath = args[3]
+			recursive = true
+		} else {
+			uriStr = args[1]
+			localPath = args[2]
+			recursive = false
+		}
+
 		bucketName, remotePath, err := tinys3cli.ParseS3URI(uriStr)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		localPath := args[2]
-		err = tinys3cli.DownloadObjects(client, localPath, remotePath, bucketName, false)
-		if err != nil {
-			log.Fatal(err)
-		}
-	case "getAll":
-		uriStr := args[1]
-		bucketName, remotePath, err := tinys3cli.ParseS3URI(uriStr)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		localPath := args[2]
-		err = tinys3cli.DownloadObjects(client, localPath, remotePath, bucketName, true)
+		err = tinys3cli.DownloadObjects(client, localPath, remotePath, bucketName, recursive)
 		if err != nil {
 			log.Fatal(err)
 		}
