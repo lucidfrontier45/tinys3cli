@@ -7,6 +7,7 @@ package cmd
 import (
 	"fmt"
 
+	tinys3cli "github.com/lucidfrontier45/tinys3cli/pkg"
 	"github.com/spf13/cobra"
 )
 
@@ -15,7 +16,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "show version",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("version called")
+		fmt.Println(tinys3cli.Version)
 	},
 }
 
