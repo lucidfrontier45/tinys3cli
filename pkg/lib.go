@@ -75,7 +75,7 @@ func doUpload(client *s3.Client, localPath, name, remoteDirPath, bucketName stri
 
 	key := ""
 	if len(remoteDirPath) > 0 {
-		key = fmt.Sprintf("%s/%s", remoteDirPath, name)
+		key = path.Join(remoteDirPath, name)
 	} else {
 		key = name
 	}
@@ -138,6 +138,11 @@ func doDownload(client *s3.Client, localPath, remotePath, bucketName string) err
 }
 
 func DownloadObjects(client *s3.Client, localPath, remotePath, bucketName string, recursive bool) error {
+	if recursive {
+		println("recursive")
+	} else {
+		println("single")
+	}
 	if recursive {
 		info, err := os.Stat(localPath)
 		if err == nil && !info.IsDir() {
