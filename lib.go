@@ -3,10 +3,12 @@ package tinys3cli
 import (
 	"context"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -73,7 +75,7 @@ func doUpload(client *s3.Client, localPath, name, remoteDirPath, bucketName stri
 	key := ""
 	if len(remoteDirPath) > 0 {
 		key = fmt.Sprintf("%s/%s", remoteDirPath, name)
-	}else{
+	} else {
 		key = name
 	}
 	_, err = client.PutObject(context.TODO(), &s3.PutObjectInput{
@@ -113,4 +115,69 @@ func UploadObjects(client *s3.Client, localPath, remoteDirPath, bucketName strin
 	} else {
 		return doUpload(client, localPath, info.Name(), remoteDirPath, bucketName)
 	}
+}
+
+func doDownload(client *s3.Client, localPath, remotePath, bucketName string) error {
+	output, err := client.GetObject(context.TODO(), &s3.GetObjectInput{Bucket: &bucketName, Key: &remotePath})
+	if err != nil {
+		return err
+	}
+	defer output.Body.Close()
+
+	fp, err := os.Create(localPath)
+	if err != nil {
+		return err
+	}
+	defer fp.Close()
+
+	n, err := io.Copy(fp, output.Body)
+	log.Printf("written %d bytes tp %s", n, localPath)
+
+	return err
+}
+
+func DownloadObjects(client *s3.Client, localPath, remotePath, bucketName string, recursive bool) error {
+	if recursive {
+		info, err := os.Stat(localPath)
+		if err == nil && !info.IsDir() {
+			return fmt.Errorf("cannot make directory, %s is a file", localPath)
+		}
+
+		listResult, err := client.ListObjectsV2(context.TODO(), &s3.ListObjectsV2Input{
+			Bucket: aws.String(bucketName),
+			Prefix: aws.String(remotePath),
+		})
+		if err != nil {
+			return err
+		}
+
+		for _, object := range listResult.Contents {
+			log.Printf("key=%s size=%d", aws.ToString(object.Key), object.Size)
+			dirPath, fileName := path.Split(*object.Key)
+			dirPath = path.Join(localPath, dirPath)
+			err = os.MkdirAll(dirPath, os.ModePerm)
+			if err != nil {
+				log.Printf("error on %s, %s", *object.Key, err)
+			}
+			filePath := path.Join(dirPath, fileName)
+			err = doDownload(client, filePath, *object.Key, bucketName)
+			if err != nil {
+				log.Printf("error on %s, %s", *object.Key, err)
+			}
+		}
+
+	} else {
+		splt := strings.Split(remotePath, "/")
+		filename := splt[len(splt)-1]
+		var destPath string
+		info, err := os.Stat(localPath)
+		if err == nil && info.IsDir() {
+			destPath = path.Join(localPath, filename)
+		} else {
+			destPath = localPath
+		}
+		return doDownload(client, destPath, remotePath, bucketName)
+	}
+
+	return nil
 }

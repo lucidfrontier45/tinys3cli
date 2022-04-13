@@ -28,12 +28,36 @@ func main() {
 			log.Printf("key=%s size=%d", aws.ToString(object.Key), object.Size)
 		}
 	case "get":
+		uriStr := args[1]
+		bucketName, remotePath, err := tinys3cli.ParseS3URI(uriStr)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		localPath := args[2]
+		err = tinys3cli.DownloadObjects(client, localPath, remotePath, bucketName, false)
+		if err != nil {
+			log.Fatal(err)
+		}
+	case "getAll":
+		uriStr := args[1]
+		bucketName, remotePath, err := tinys3cli.ParseS3URI(uriStr)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		localPath := args[2]
+		err = tinys3cli.DownloadObjects(client, localPath, remotePath, bucketName, true)
+		if err != nil {
+			log.Fatal(err)
+		}
 	case "put":
 		uriStr := args[argc-1]
 		bucketName, remoteDirPath, err := tinys3cli.ParseS3URI(uriStr)
 		if err != nil {
 			log.Fatal(err)
 		}
+
 		var wg sync.WaitGroup
 		for _, localPath := range args[1 : argc-1] {
 			wg.Add(1)
