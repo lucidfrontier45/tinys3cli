@@ -4,12 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/fs"
 	"log"
 	"net/url"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 	"sync"
 
@@ -65,59 +63,6 @@ func ListObjects(client *s3.Client, uriStr string) (*s3.ListObjectsV2Output, err
 		Bucket: aws.String(bucketName),
 		Prefix: aws.String(path),
 	})
-}
-
-func doUpload(client *s3.Client, localPath, name, remoteDirPath, bucketName string) error {
-	fp, err := os.Open(localPath)
-	if err != nil {
-		return err
-	}
-
-	defer fp.Close()
-
-	key := ""
-	if len(remoteDirPath) > 0 {
-		key = path.Join(remoteDirPath, name)
-	} else {
-		key = name
-	}
-	_, err = client.PutObject(context.TODO(), &s3.PutObjectInput{
-		Bucket: &bucketName, Key: &key, Body: fp})
-	return err
-}
-
-func UploadObjects(client *s3.Client, localPath, remoteDirPath, bucketName string) error {
-	info, err := os.Stat(localPath)
-	if err != nil {
-		return err
-	}
-
-	if info.IsDir() {
-		var wg sync.WaitGroup
-		err = filepath.WalkDir(localPath, func(path string, d fs.DirEntry, err error) error {
-			if err != nil {
-				// handle possible path err, just in case...
-				return err
-			}
-
-			if !d.IsDir() {
-				wg.Add(1)
-				go func(p string) {
-					err2 := doUpload(client, p, p, remoteDirPath, bucketName)
-					if err2 != nil {
-						fmt.Printf("couldn't upload %s, %s", p, err2)
-					}
-					defer wg.Done()
-				}(path)
-			}
-
-			return nil
-		})
-		wg.Wait()
-		return err
-	} else {
-		return doUpload(client, localPath, info.Name(), remoteDirPath, bucketName)
-	}
 }
 
 func doDownload(client *s3.Client, localPath, remotePath, bucketName string) error {

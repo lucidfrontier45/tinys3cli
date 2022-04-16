@@ -6,8 +6,8 @@ package cmd
 
 import (
 	"log"
-	"sync"
 
+	"github.com/gammazero/workerpool"
 	tinys3cli "github.com/lucidfrontier45/tinys3cli/pkg"
 	"github.com/spf13/cobra"
 )
@@ -19,31 +19,31 @@ var putCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		argc := len(args)
 		uriStr := args[argc-1]
-		client := tinys3cli.CreateClient()
 		bucketName, remoteDirPath, err := tinys3cli.ParseS3URI(uriStr)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		var wg sync.WaitGroup
-		for _, localPath := range args[0 : argc-1] {
-			wg.Add(1)
-			go func(p string) {
-				defer wg.Done()
-				err = tinys3cli.UploadObjects(client, p, remoteDirPath, bucketName)
-				if err != nil {
-					log.Printf("couldn't upload %s, %s", p, err)
-				} else {
-					log.Printf("uploaded %s to %s", p, uriStr)
-				}
-			}(localPath)
+		client := tinys3cli.CreateClient()
+		n_jobs, err := cmd.Flags().GetInt("jobs")
+		if err != nil {
+			n_jobs = 4
 		}
-		wg.Wait()
+		wp := workerpool.New(n_jobs)
+		uploader := tinys3cli.NewS3Uploader(client, wp)
+
+		for _, localPath := range args[0 : argc-1] {
+			uploader.Submit(localPath, remoteDirPath, bucketName)
+		}
+
+		uploader.Wait()
+
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(putCmd)
+	putCmd.Flags().IntP("jobs", "j", 4, "max parallel jobs")
 
 	// Here you will define your flags and configuration settings.
 
