@@ -41,8 +41,8 @@ type S3Uploader struct {
 	wp     *workerpool.WorkerPool
 }
 
-func NewS3Uploader(client *s3.Client, wp *workerpool.WorkerPool) S3Uploader {
-	return S3Uploader{client: client, wp: wp}
+func NewS3Uploader(n_jobs int) S3Uploader {
+	return S3Uploader{client: CreateClient(), wp: workerpool.New(n_jobs)}
 }
 
 func (uploader *S3Uploader) Wait() {
@@ -55,6 +55,9 @@ func (uploader *S3Uploader) Submit(localPath, remoteDirPath, bucketName string) 
 		return err
 	}
 
+	client := uploader.client
+	wp := uploader.wp
+
 	if info.IsDir() {
 		err = filepath.WalkDir(localPath, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
@@ -63,11 +66,11 @@ func (uploader *S3Uploader) Submit(localPath, remoteDirPath, bucketName string) 
 			}
 
 			if !d.IsDir() {
-				p := path
-				uploader.wp.Submit(func() {
-					err2 := doUpload(uploader.client, p, p, remoteDirPath, bucketName)
+				path := path
+				wp.Submit(func() {
+					err2 := doUpload(client, path, path, remoteDirPath, bucketName)
 					if err2 != nil {
-						fmt.Printf("couldn't upload %s, %s", p, err2)
+						fmt.Printf("couldn't upload %s, %s", path, err2)
 					}
 				})
 			}
@@ -76,8 +79,8 @@ func (uploader *S3Uploader) Submit(localPath, remoteDirPath, bucketName string) 
 		})
 		return err
 	} else {
-		uploader.wp.Submit(func() {
-			err2 := doUpload(uploader.client, localPath, info.Name(), remoteDirPath, bucketName)
+		wp.Submit(func() {
+			err2 := doUpload(client, localPath, info.Name(), remoteDirPath, bucketName)
 			if err2 != nil {
 				fmt.Printf("couldn't upload %s, %s", localPath, err2)
 			}

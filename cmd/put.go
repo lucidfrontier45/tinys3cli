@@ -7,7 +7,6 @@ package cmd
 import (
 	"log"
 
-	"github.com/gammazero/workerpool"
 	tinys3cli "github.com/lucidfrontier45/tinys3cli/pkg"
 	"github.com/spf13/cobra"
 )
@@ -24,13 +23,11 @@ var putCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		client := tinys3cli.CreateClient()
 		n_jobs, err := cmd.Flags().GetInt("jobs")
 		if err != nil {
 			n_jobs = 4
 		}
-		wp := workerpool.New(n_jobs)
-		uploader := tinys3cli.NewS3Uploader(client, wp)
+		uploader := tinys3cli.NewS3Uploader(n_jobs)
 
 		for _, localPath := range args[0 : argc-1] {
 			uploader.Submit(localPath, remoteDirPath, bucketName)

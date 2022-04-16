@@ -5,65 +5,15 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net/url"
 	"os"
 	"path"
 	"strings"
 	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/gammazero/workerpool"
 )
-
-var Version = "0.1.0"
-
-func CreateClient() *s3.Client {
-	// Load the Shared AWS Configuration (~/.aws/config)
-	cfg, err := config.LoadDefaultConfig(context.TODO())
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Create an Amazon S3 service client
-	return s3.NewFromConfig(cfg)
-
-}
-
-func ParseS3URI(uriStr string) (bucketName string, remotePath string, err error) {
-	uri, err := url.Parse(uriStr)
-
-	if err != nil {
-		return "", "", err
-	}
-
-	if strings.ToLower(uri.Scheme) != "s3" {
-		return "", "", fmt.Errorf("invalid scheme %s", uri.Scheme)
-	}
-
-	remotePath = ""
-	if len(uri.Path) > 0 {
-		remotePath = uri.Path[1:]
-	}
-
-	return uri.Host, remotePath, nil
-
-}
-
-func ListObjects(client *s3.Client, uriStr string) (*s3.ListObjectsV2Output, error) {
-	bucketName, path, err := ParseS3URI(uriStr)
-
-	if err != nil {
-		return nil, err
-	}
-
-	// Get the first page of results for ListObjectsV2 for a bucket
-	return client.ListObjectsV2(context.TODO(), &s3.ListObjectsV2Input{
-		Bucket: aws.String(bucketName),
-		Prefix: aws.String(path),
-	})
-}
 
 func doDownload(client *s3.Client, localPath, remotePath, bucketName string) error {
 	output, err := client.GetObject(context.TODO(), &s3.GetObjectInput{Bucket: &bucketName, Key: &remotePath})
@@ -84,12 +34,24 @@ func doDownload(client *s3.Client, localPath, remotePath, bucketName string) err
 	return err
 }
 
-func DownloadObjects(client *s3.Client, localPath, remotePath, bucketName string, recursive bool) error {
-	if recursive {
-		println("recursive")
-	} else {
-		println("single")
-	}
+type S3Downloader struct {
+	client *s3.Client
+	wp     *workerpool.WorkerPool
+	mux    sync.Mutex
+}
+
+func NewS3Downloader(n_jobs int) S3Downloader {
+	return S3Downloader{client: CreateClient(), wp: workerpool.New(n_jobs), mux: sync.Mutex{}}
+}
+
+func (downloader *S3Downloader) Wait() {
+	downloader.wp.StopWait()
+}
+
+func (downloader *S3Downloader) Submit(localPath, remotePath, bucketName string, recursive bool) error {
+	client := downloader.client
+	wp := downloader.wp
+
 	if recursive {
 		info, err := os.Stat(localPath)
 		if err == nil && !info.IsDir() {
@@ -104,18 +66,14 @@ func DownloadObjects(client *s3.Client, localPath, remotePath, bucketName string
 			return err
 		}
 
-		var mux sync.Mutex
-		var wg sync.WaitGroup
-
 		for _, object := range listResult.Contents {
-			wg.Add(1)
-			go func(obj types.Object) {
-				defer wg.Done()
+			obj := object
+			wp.Submit(func() {
 				dirPath, fileName := path.Split(*obj.Key)
 				dirPath = path.Join(localPath, dirPath)
-				mux.Lock()
+				downloader.mux.Lock()
 				err = os.MkdirAll(dirPath, os.ModePerm)
-				mux.Unlock()
+				downloader.mux.Unlock()
 				if err != nil {
 					log.Printf("error on %s, %s", *obj.Key, err)
 				}
@@ -125,9 +83,8 @@ func DownloadObjects(client *s3.Client, localPath, remotePath, bucketName string
 				if err != nil {
 					log.Printf("error on %s, %s", *obj.Key, err)
 				}
-			}(object)
+			})
 		}
-		wg.Wait()
 
 	} else {
 		splt := strings.Split(remotePath, "/")
@@ -139,7 +96,13 @@ func DownloadObjects(client *s3.Client, localPath, remotePath, bucketName string
 		} else {
 			destPath = localPath
 		}
-		return doDownload(client, destPath, remotePath, bucketName)
+
+		wp.Submit(func() {
+			err := doDownload(client, destPath, remotePath, bucketName)
+			if err != nil {
+				log.Printf("error on %s, %s", remotePath, err)
+			}
+		})
 	}
 
 	return nil
