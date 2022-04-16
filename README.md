@@ -14,8 +14,8 @@ go install github.com/lucidfrontier45/tinys3cli@latest
 tinys3cli list s3://bucket/path
 
 # upload objects
-tinys3cli put localfile1 [localfile2] ... s3://bucket/path
+tinys3cli put [-j n_jobs] localfile1 [localfile2] ... s3://bucket/path
 
 # download objects (recursively)
-tinys3cli get [-r] s3:/bucket/path localpath
+tinys3cli get [-r] [-j n_jobs] s3:/bucket/path localpath
 ```
