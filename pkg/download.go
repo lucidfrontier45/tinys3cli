@@ -52,9 +52,11 @@ func (downloader *S3Downloader) Submit(localPath, remotePath, bucketName string,
 	client := downloader.client
 	wp := downloader.wp
 
+	// strip final slash
+	remotePath = strings.TrimSuffix(remotePath, "/")
+
 	if recursive {
-		remoteDirPath, _ := path.Split(remotePath)
-		splt := strings.Split(remoteDirPath, "/")
+		splt := strings.Split(remotePath, "/")
 		n := len(splt)
 		remoteDirPrefix := ""
 		if n > 0 {
@@ -100,8 +102,7 @@ func (downloader *S3Downloader) Submit(localPath, remotePath, bucketName string,
 		}
 
 	} else {
-		splt := strings.Split(remotePath, "/")
-		filename := splt[len(splt)-1]
+		_, filename := path.Split(remotePath)
 		var destPath string
 		info, err := os.Stat(localPath)
 		if err == nil && info.IsDir() {
