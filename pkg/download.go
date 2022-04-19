@@ -53,6 +53,15 @@ func (downloader *S3Downloader) Submit(localPath, remotePath, bucketName string,
 	wp := downloader.wp
 
 	if recursive {
+		remoteDirPath, _ := path.Split(remotePath)
+		splt := strings.Split(remoteDirPath, "/")
+		n := len(splt)
+		remoteDirPrefix := ""
+		if n > 0 {
+			remoteDirPrefix = strings.Join(splt[:n-1], "/")
+		}
+		prefixLen := len(remoteDirPrefix)
+
 		info, err := os.Stat(localPath)
 		if err == nil && !info.IsDir() {
 			return fmt.Errorf("cannot make directory, %s is a file", localPath)
@@ -68,9 +77,13 @@ func (downloader *S3Downloader) Submit(localPath, remotePath, bucketName string,
 
 		for _, object := range listResult.Contents {
 			obj := object
+			// skip directory
+			if strings.HasSuffix(*obj.Key, "/") {
+				continue
+			}
 			wp.Submit(func() {
 				dirPath, fileName := path.Split(*obj.Key)
-				dirPath = path.Join(localPath, dirPath)
+				dirPath = path.Join(localPath, dirPath[prefixLen:])
 				downloader.mux.Lock()
 				err = os.MkdirAll(dirPath, os.ModePerm)
 				downloader.mux.Unlock()
