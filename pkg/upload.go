@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/gammazero/workerpool"
@@ -58,7 +59,18 @@ func (uploader *S3Uploader) Submit(localPath, remoteDirPath, bucketName string) 
 	client := uploader.client
 	wp := uploader.wp
 
+	// strip final slash
+	localPath = strings.TrimSuffix(localPath, "/")
+
 	if info.IsDir() {
+		splt := strings.Split(localPath, "/")
+		n := len(splt)
+		localDirPrefix := ""
+		if n > 0 {
+			localDirPrefix = strings.Join(splt[:n-1], "/")
+		}
+		prefixLen := len(localDirPrefix)
+
 		err = filepath.WalkDir(localPath, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				// handle possible path err, just in case...
@@ -68,7 +80,7 @@ func (uploader *S3Uploader) Submit(localPath, remoteDirPath, bucketName string) 
 			if !d.IsDir() {
 				path := path
 				wp.Submit(func() {
-					err2 := doUpload(client, path, path, remoteDirPath, bucketName)
+					err2 := doUpload(client, path, path[prefixLen:], remoteDirPath, bucketName)
 					if err2 != nil {
 						fmt.Printf("couldn't upload %s, %s", path, err2)
 					}
