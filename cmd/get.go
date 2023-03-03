@@ -1,6 +1,5 @@
 /*
 Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
@@ -33,11 +32,13 @@ var getCmd = &cobra.Command{
 		}
 		downloader := tinys3cli.NewS3Downloader(n_jobs)
 		err = downloader.Submit(localPath, remotePath, bucketName, recursive)
-		defer downloader.Wait()
 		if err != nil {
 			log.Fatal(err)
 		}
-
+		downloader.Wait()
+		if downloader.GetLastErr() != nil {
+			log.Fatal(downloader.GetLastErr())
+		}
 	},
 }
 

@@ -9,6 +9,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/gammazero/workerpool"
@@ -38,12 +39,24 @@ func doUpload(client *s3.Client, localPath, name, remoteDirPath, bucketName stri
 }
 
 type S3Uploader struct {
-	client *s3.Client
-	wp     *workerpool.WorkerPool
+	client    *s3.Client
+	wp        *workerpool.WorkerPool
+	mux       sync.Mutex
+	lasterror error
 }
 
 func NewS3Uploader(n_jobs int) S3Uploader {
-	return S3Uploader{client: CreateClient(), wp: workerpool.New(n_jobs)}
+	return S3Uploader{client: CreateClient(), wp: workerpool.New(n_jobs), mux: sync.Mutex{}}
+}
+
+func (uploader *S3Uploader) GetLastErr() error {
+	return uploader.lasterror
+}
+
+func (uploader *S3Uploader) SetLastErr(err error) {
+	uploader.mux.Lock()
+	defer uploader.mux.Unlock()
+	uploader.lasterror = err
 }
 
 func (uploader *S3Uploader) Wait() {
@@ -83,6 +96,7 @@ func (uploader *S3Uploader) Submit(localPath, remoteDirPath, bucketName string) 
 					err2 := doUpload(client, path, path[prefixLen:], remoteDirPath, bucketName)
 					if err2 != nil {
 						fmt.Printf("couldn't upload %s, %s", path, err2)
+						uploader.SetLastErr(err2)
 					}
 				})
 			}
@@ -95,6 +109,7 @@ func (uploader *S3Uploader) Submit(localPath, remoteDirPath, bucketName string) 
 			err2 := doUpload(client, localPath, info.Name(), remoteDirPath, bucketName)
 			if err2 != nil {
 				fmt.Printf("couldn't upload %s, %s", localPath, err2)
+				uploader.SetLastErr(err2)
 			}
 		})
 	}

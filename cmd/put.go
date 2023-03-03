@@ -1,6 +1,5 @@
 /*
 Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
@@ -30,10 +29,17 @@ var putCmd = &cobra.Command{
 		uploader := tinys3cli.NewS3Uploader(n_jobs)
 
 		for _, localPath := range args[0 : argc-1] {
-			uploader.Submit(localPath, remoteDirPath, bucketName)
+			err = uploader.Submit(localPath, remoteDirPath, bucketName)
+			if err != nil {
+				log.Fatal(err)
+			}
 		}
 
 		uploader.Wait()
+
+		if uploader.GetLastErr() != nil {
+			log.Fatal(uploader.GetLastErr())
+		}
 
 	},
 }

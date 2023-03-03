@@ -35,13 +35,24 @@ func doDownload(client *s3.Client, localPath, remotePath, bucketName string) err
 }
 
 type S3Downloader struct {
-	client *s3.Client
-	wp     *workerpool.WorkerPool
-	mux    sync.Mutex
+	client    *s3.Client
+	wp        *workerpool.WorkerPool
+	mux       sync.Mutex
+	lasterror error
 }
 
 func NewS3Downloader(n_jobs int) S3Downloader {
 	return S3Downloader{client: CreateClient(), wp: workerpool.New(n_jobs), mux: sync.Mutex{}}
+}
+
+func (downloader *S3Downloader) GetLastErr() error {
+	return downloader.lasterror
+}
+
+func (downloader *S3Downloader) SetLastErr(err error) {
+	downloader.mux.Lock()
+	defer downloader.mux.Unlock()
+	downloader.lasterror = err
 }
 
 func (downloader *S3Downloader) Wait() {
@@ -91,12 +102,15 @@ func (downloader *S3Downloader) Submit(localPath, remotePath, bucketName string,
 				downloader.mux.Unlock()
 				if err != nil {
 					log.Printf("error on %s, %s", *obj.Key, err)
+					downloader.SetLastErr(err)
+					return
 				}
 
 				filePath := path.Join(dirPath, fileName)
 				err = doDownload(client, filePath, *obj.Key, bucketName)
 				if err != nil {
 					log.Printf("error on %s, %s", *obj.Key, err)
+					downloader.SetLastErr(err)
 				}
 			})
 		}
@@ -115,6 +129,7 @@ func (downloader *S3Downloader) Submit(localPath, remotePath, bucketName string,
 			err := doDownload(client, destPath, remotePath, bucketName)
 			if err != nil {
 				log.Printf("error on %s, %s", remotePath, err)
+				downloader.SetLastErr(err)
 			}
 		})
 	}
