@@ -15,8 +15,14 @@ import (
 	"github.com/gammazero/workerpool"
 )
 
-func doDownload(client *s3.Client, localPath, remotePath, bucketName string) error {
-	output, err := client.GetObject(context.TODO(), &s3.GetObjectInput{Bucket: &bucketName, Key: &remotePath})
+func doDownload(client *s3.Client, localPath, remotePath, bucketName string, versionId ...string) error {
+	var output *s3.GetObjectOutput
+	var err error
+	if len(versionId) > 0 {
+		output, err = client.GetObject(context.TODO(), &s3.GetObjectInput{Bucket: &bucketName, Key: &remotePath, VersionId: &versionId[0]})
+	} else {
+		output, err = client.GetObject(context.TODO(), &s3.GetObjectInput{Bucket: &bucketName, Key: &remotePath})
+	}
 	if err != nil {
 		return err
 	}
