@@ -37,6 +37,9 @@ var getCmd = &cobra.Command{
 		if err != nil {
 			versionId = ""
 		}
+		if versionId != "" && recursive {
+			log.Fatal("Error: Version ID cannot be specified when downloading recursively")
+		}
 
 		err = downloader.Submit(localPath, remotePath, bucketName, recursive, versionId)
 		if err != nil {
