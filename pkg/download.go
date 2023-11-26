@@ -113,7 +113,7 @@ func (downloader *S3Downloader) Submit(localPath, remotePath, bucketName string,
 				}
 
 				filePath := path.Join(dirPath, fileName)
-				err = doDownload(client, filePath, *obj.Key, bucketName, versionId)
+				err = doDownload(client, filePath, *obj.Key, bucketName, "")
 				if err != nil {
 					log.Printf("error on %s, %s", *obj.Key, err)
 					downloader.SetLastErr(err)
