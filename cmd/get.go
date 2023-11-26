@@ -33,7 +33,7 @@ var getCmd = &cobra.Command{
 
 		downloader := tinys3cli.NewS3Downloader(n_jobs)
 
-		versionId, err := cmd.Flags().GetString("version ID")
+		versionId, err := cmd.Flags().GetString("version-id")
 		if err != nil {
 			versionId = ""
 		}
@@ -56,7 +56,7 @@ func init() {
 	rootCmd.AddCommand(getCmd)
 	getCmd.Flags().BoolP("recursive", "r", false, "download recursively")
 	getCmd.Flags().IntP("jobs", "j", 4, "max parallel jobs")
-	getCmd.Flags().StringP("version ID", "v", "", "file version ID")
+	getCmd.Flags().StringP("version-id", "v", "", "file version ID")
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
