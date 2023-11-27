@@ -15,8 +15,14 @@ import (
 	"github.com/gammazero/workerpool"
 )
 
-func doDownload(client *s3.Client, localPath, remotePath, bucketName string) error {
-	output, err := client.GetObject(context.TODO(), &s3.GetObjectInput{Bucket: &bucketName, Key: &remotePath})
+func doDownload(client *s3.Client, localPath, remotePath, bucketName string, versionId string) error {
+	var output *s3.GetObjectOutput
+	var err error
+	if versionId != "" {
+		output, err = client.GetObject(context.TODO(), &s3.GetObjectInput{Bucket: &bucketName, Key: &remotePath, VersionId: &versionId})
+	} else {
+		output, err = client.GetObject(context.TODO(), &s3.GetObjectInput{Bucket: &bucketName, Key: &remotePath})
+	}
 	if err != nil {
 		return err
 	}
@@ -59,7 +65,7 @@ func (downloader *S3Downloader) Wait() {
 	downloader.wp.StopWait()
 }
 
-func (downloader *S3Downloader) Submit(localPath, remotePath, bucketName string, recursive bool) error {
+func (downloader *S3Downloader) Submit(localPath, remotePath, bucketName string, recursive bool, versionId string) error {
 	client := downloader.client
 	wp := downloader.wp
 
@@ -107,7 +113,7 @@ func (downloader *S3Downloader) Submit(localPath, remotePath, bucketName string,
 				}
 
 				filePath := path.Join(dirPath, fileName)
-				err = doDownload(client, filePath, *obj.Key, bucketName)
+				err = doDownload(client, filePath, *obj.Key, bucketName, "")
 				if err != nil {
 					log.Printf("error on %s, %s", *obj.Key, err)
 					downloader.SetLastErr(err)
@@ -126,7 +132,7 @@ func (downloader *S3Downloader) Submit(localPath, remotePath, bucketName string,
 		}
 
 		wp.Submit(func() {
-			err := doDownload(client, destPath, remotePath, bucketName)
+			err := doDownload(client, destPath, remotePath, bucketName, versionId)
 			if err != nil {
 				log.Printf("error on %s, %s", remotePath, err)
 				downloader.SetLastErr(err)
