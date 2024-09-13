@@ -7,6 +7,12 @@ A Tiny S3 Client Application in Golang
 go install github.com/lucidfrontier45/tinys3cli@latest
 ```
 
+# Docker install
+
+```docker
+COPY --from=lucidfrontier45/tinys3cli:latest /bin/tinys3cli /bin/tinys3cli
+```
+
 # usage
 
 ```
