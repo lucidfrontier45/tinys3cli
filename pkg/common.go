@@ -12,7 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
-var Version = "0.3.1"
+var Version = "0.3.2"
 
 func CreateClient() *s3.Client {
 	// Load the Shared AWS Configuration (~/.aws/config)
