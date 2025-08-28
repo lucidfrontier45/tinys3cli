@@ -37,4 +37,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$GIT_TAG_NAME
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.GIT_TAG_NAME }}
