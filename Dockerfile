@@ -13,4 +13,4 @@ RUN go build -ldflags '-s -w' -o /project/tinys3cli main.go
 RUN upx /project/tinys3cli
 
 FROM alpine 
-COPY --from=builder /project/tinys3cli /bin/tinys3cli
+COPY --from=builder /project/tinys3cli /tinys3cli
