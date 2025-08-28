@@ -250,7 +250,7 @@ jobs:
         continue-on-error: true
         run: |
               docker buildx imagetools create \
-                --tag $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+                --tag $DOCKER_METADATA_OUTPUT_TAGS \
                 --annotation='index:org.opencontainers.image.description=${{ github.event.repository.description }}' \
                 --annotation='index:org.opencontainers.image.created=${{ steps.timestamp.outputs.timestamp }}' \
                 --annotation='index:org.opencontainers.image.url=${{ github.event.repository.url }}' \
@@ -265,7 +265,7 @@ jobs:
         if: steps.manifest-annotate.outcome == 'failure'
         working-directory: /tmp/digests
         run: |
-              docker buildx imagetools create --tag $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+              docker buildx imagetools create --tag $DOCKER_METADATA_OUTPUT_TAGS \
                 $(printf '${{ env.GHCR_IMAGE }}@sha256:%s ' *)
 
       - name: Inspect image
