@@ -89,9 +89,6 @@ jobs:
         uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804 # v5.7.0
         with:
           images: ${{ env.GHCR_IMAGE }}
-          tags: |
-            type=semver,pattern={{version}}
-            type=raw,value=latest
 
       - name: Set up Docker Context for Buildx
         # This step sets up a Docker context for Buildx.
@@ -212,7 +209,6 @@ jobs:
             type=org.opencontainers.image.description,value=${{ github.event.repository.description || 'No description provided' }}
           tags: |
             type=semver,pattern={{version}}
-            type=raw,value=latest
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
@@ -251,6 +247,7 @@ jobs:
         run: |
               docker buildx imagetools create \
                 --tag $DOCKER_METADATA_OUTPUT_TAGS \
+                --tag ${{ env.GHCR_IMAGE }}:latest \
                 --annotation='index:org.opencontainers.image.description=${{ github.event.repository.description }}' \
                 --annotation='index:org.opencontainers.image.created=${{ steps.timestamp.outputs.timestamp }}' \
                 --annotation='index:org.opencontainers.image.url=${{ github.event.repository.url }}' \
@@ -265,7 +262,9 @@ jobs:
         if: steps.manifest-annotate.outcome == 'failure'
         working-directory: /tmp/digests
         run: |
-              docker buildx imagetools create --tag $DOCKER_METADATA_OUTPUT_TAGS \
+              docker buildx imagetools create \
+                --tag $DOCKER_METADATA_OUTPUT_TAGS \
+                --tag ${{ env.GHCR_IMAGE }}:latest \
                 $(printf '${{ env.GHCR_IMAGE }}@sha256:%s ' *)
 
       - name: Inspect image
