@@ -40,7 +40,6 @@ var putCmd = &cobra.Command{
 		if uploader.GetLastErr() != nil {
 			log.Fatal(uploader.GetLastErr())
 		}
-
 	},
 }
 

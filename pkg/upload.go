@@ -30,7 +30,8 @@ func doUpload(client *s3.Client, localPath, name, remoteDirPath, bucketName stri
 		key = name
 	}
 	_, err = client.PutObject(context.TODO(), &s3.PutObjectInput{
-		Bucket: &bucketName, Key: &key, Body: fp})
+		Bucket: &bucketName, Key: &key, Body: fp,
+	})
 
 	if err == nil {
 		log.Printf("uploaded %s", localPath)

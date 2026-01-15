@@ -23,12 +23,10 @@ func CreateClient() *s3.Client {
 
 	// Create an Amazon S3 service client
 	return s3.NewFromConfig(cfg)
-
 }
 
-func ParseS3URI(uriStr string) (bucketName string, remotePath string, err error) {
+func ParseS3URI(uriStr string) (bucketName, remotePath string, err error) {
 	uri, err := url.Parse(uriStr)
-
 	if err != nil {
 		return "", "", err
 	}
@@ -43,12 +41,10 @@ func ParseS3URI(uriStr string) (bucketName string, remotePath string, err error)
 	}
 
 	return uri.Host, remotePath, nil
-
 }
 
 func ListObjects(client *s3.Client, uriStr string) (*s3.ListObjectsV2Output, error) {
 	bucketName, path, err := ParseS3URI(uriStr)
-
 	if err != nil {
 		return nil, err
 	}

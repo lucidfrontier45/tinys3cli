@@ -1,0 +1,21 @@
+version: "2"
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+    - golines
+    - swaggo
+  settings:
+    gofumpt:
+      extra-rules: true
+linters:
+  default: standard
+  enable:
+    - revive
+  settings:
+    revive:
+      severity: warning
+run:
+  timeout: 5m

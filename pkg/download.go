@@ -15,13 +15,23 @@ import (
 	"github.com/gammazero/workerpool"
 )
 
-func doDownload(client *s3.Client, localPath, remotePath, bucketName string, versionId string) error {
+func doDownload(
+	client *s3.Client,
+	localPath, remotePath, bucketName string,
+	versionId string,
+) error {
 	var output *s3.GetObjectOutput
 	var err error
 	if versionId != "" {
-		output, err = client.GetObject(context.TODO(), &s3.GetObjectInput{Bucket: &bucketName, Key: &remotePath, VersionId: &versionId})
+		output, err = client.GetObject(
+			context.TODO(),
+			&s3.GetObjectInput{Bucket: &bucketName, Key: &remotePath, VersionId: &versionId},
+		)
 	} else {
-		output, err = client.GetObject(context.TODO(), &s3.GetObjectInput{Bucket: &bucketName, Key: &remotePath})
+		output, err = client.GetObject(
+			context.TODO(),
+			&s3.GetObjectInput{Bucket: &bucketName, Key: &remotePath},
+		)
 	}
 	if err != nil {
 		return err
@@ -65,7 +75,11 @@ func (downloader *S3Downloader) Wait() {
 	downloader.wp.StopWait()
 }
 
-func (downloader *S3Downloader) Submit(localPath, remotePath, bucketName string, recursive bool, versionId string) error {
+func (downloader *S3Downloader) Submit(
+	localPath, remotePath, bucketName string,
+	recursive bool,
+	versionId string,
+) error {
 	client := downloader.client
 	wp := downloader.wp
 
