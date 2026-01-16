@@ -17,6 +17,10 @@ A Tiny S3 Client written in Go. Upload, download, and list S3 objects with paral
 
 ## Installation
 
+### Pre-built Binaries
+
+Download the latest release from the [GitHub Releases](https://github.com/lucidfrontier45/tinys3cli/releases).
+
 ### From Source
 
 ```sh
