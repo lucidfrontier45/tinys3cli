@@ -45,7 +45,7 @@ jobs:
         run: sudo apt update && sudo apt install -y upx
 
       - name: Compress binary with UPX
-        if: matrix.goos != 'darwin'
+        if: matrix.goos != 'darwin' && !(matrix.goos == 'windows' && matrix.goarch == 'arm64')
         run: upx --best --lzma tinys3cli-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
 
       - name: Upload release asset
