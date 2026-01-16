@@ -48,7 +48,7 @@ func ParseS3URI(uriStr string) (bucketName, remotePath string, err error) {
 		remotePath = uri.Path[1:]
 	}
 
-	if err := ValidatePath(remotePath, ""); err != nil {
+	if err := ValidatePath(remotePath, "", false); err != nil {
 		return "", "", fmt.Errorf("invalid remote path: %w", err)
 	}
 
@@ -73,7 +73,12 @@ func ListObjects(client *s3.Client, uriStr string) (*s3.ListObjectsV2Output, err
 // ValidatePath checks if a path is safe and stays within the base directory.
 // It rejects paths containing directory traversal sequences (../ or ..\)
 // and ensures the resolved path does not escape the base directory.
-func ValidatePath(path, baseDir string) error {
+// When noLocalPathCheck is true, all validations are skipped for local paths.
+func ValidatePath(path, baseDir string, noLocalPathCheck bool) error {
+	// Skip all validations if local path checking is disabled
+	if noLocalPathCheck {
+		return nil
+	}
 	path = filepath.ToSlash(path)
 	baseDir = filepath.ToSlash(baseDir)
 

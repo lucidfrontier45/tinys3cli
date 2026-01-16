@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 
 	tinys3cli "github.com/lucidfrontier45/tinys3cli/pkg"
 	"github.com/spf13/cobra"
@@ -29,9 +30,19 @@ var getCmd = &cobra.Command{
 
 		recursive, _ := cmd.Flags().GetBool("recursive")
 
-		n_jobs, err := cmd.Flags().GetInt("jobs")
-		if err != nil {
-			n_jobs = 4
+		n_jobs, _ := cmd.Flags().GetInt("jobs")
+		if n_jobs <= 0 {
+			envJobs := tinys3cli.GetWorkerCountFromEnv()
+			if envJobs > 0 {
+				n_jobs = envJobs
+			} else {
+				n_jobs = tinys3cli.GetDefaultWorkerCount()
+			}
+		}
+		clamped, warning := tinys3cli.ValidateWorkerCount(n_jobs)
+		if warning != "" {
+			log.Printf(warning, n_jobs, tinys3cli.GetMaxWorkerCount(), clamped)
+			n_jobs = clamped
 		}
 
 		downloader, err := tinys3cli.NewDownloader(n_jobs)
@@ -47,7 +58,16 @@ var getCmd = &cobra.Command{
 			return fmt.Errorf("version ID cannot be specified when downloading recursively")
 		}
 
-		err = downloader.Submit(localPath, remotePath, bucketName, recursive, versionId)
+		noLocalPathCheck, _ := cmd.Flags().GetBool("no-local-path-check")
+
+		err = downloader.Submit(
+			localPath,
+			remotePath,
+			bucketName,
+			recursive,
+			versionId,
+			noLocalPathCheck,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to submit download: %w", err)
 		}
@@ -64,5 +84,6 @@ func init() {
 	getCmd.Flags().BoolP("recursive", "r", false, "download recursively")
 	getCmd.Flags().IntP("jobs", "j", 4, "max parallel jobs")
 	getCmd.Flags().StringP("version-id", "v", "", "file version ID")
+	getCmd.Flags().Bool("no-local-path-check", false, "disable local path validation")
 	// Here you will define your flags and configuration settings.
 }

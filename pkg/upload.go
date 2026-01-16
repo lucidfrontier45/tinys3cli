@@ -83,7 +83,10 @@ func NewUploader(n_jobs int) (Uploader, error) {
 }
 
 // Submit queues an upload job for the given local path to the S3 bucket.
-func (uploader *Uploader) Submit(localPath, remoteDirPath, bucketName string) error {
+func (uploader *Uploader) Submit(
+	localPath, remoteDirPath, bucketName string,
+	noLocalPathCheck bool,
+) error {
 	info, err := os.Stat(localPath)
 	if err != nil {
 		return err
@@ -95,7 +98,7 @@ func (uploader *Uploader) Submit(localPath, remoteDirPath, bucketName string) er
 	// strip final slash
 	localPath = strings.TrimSuffix(localPath, "/")
 
-	if err := ValidatePath(localPath, ""); err != nil {
+	if err := ValidatePath(localPath, "", noLocalPathCheck); err != nil {
 		return fmt.Errorf("invalid local path: %w", err)
 	}
 
@@ -114,7 +117,7 @@ func (uploader *Uploader) Submit(localPath, remoteDirPath, bucketName string) er
 
 				if !d.IsDir() {
 					path := path
-					if err := ValidatePath(path, localPath); err != nil {
+					if err := ValidatePath(path, localPath, noLocalPathCheck); err != nil {
 						walkErr.Errors = append(
 							walkErr.Errors,
 							fmt.Errorf("invalid path %q: %w", path, err),

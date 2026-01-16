@@ -106,6 +106,7 @@ func (downloader *Downloader) Submit(
 	localPath, remotePath, bucketName string,
 	recursive bool,
 	versionId string,
+	noLocalPathCheck bool,
 ) error {
 	client := downloader.client
 	wp := downloader.wp
@@ -121,7 +122,7 @@ func (downloader *Downloader) Submit(
 			return fmt.Errorf("cannot make directory, %s is a file", localPath)
 		}
 
-		if err := ValidatePath(localPath, ""); err != nil {
+		if err := ValidatePath(localPath, "", noLocalPathCheck); err != nil {
 			return fmt.Errorf("invalid local path: %w", err)
 		}
 
@@ -141,7 +142,7 @@ func (downloader *Downloader) Submit(
 			}
 
 			relPath := (*obj.Key)[prefixLen:]
-			if err := ValidatePath(relPath, localPath); err != nil {
+			if err := ValidatePath(relPath, localPath, false); err != nil {
 				return fmt.Errorf("invalid remote path %q: %w", *obj.Key, err)
 			}
 
@@ -166,7 +167,7 @@ func (downloader *Downloader) Submit(
 
 	} else {
 		_, filename := path.Split(remotePath)
-		if err := ValidatePath(filename, ""); err != nil {
+		if err := ValidatePath(filename, "", noLocalPathCheck); err != nil {
 			return fmt.Errorf("invalid remote path: %w", err)
 		}
 
@@ -178,7 +179,7 @@ func (downloader *Downloader) Submit(
 			destPath = localPath
 		}
 
-		if err := ValidatePath(destPath, ""); err != nil {
+		if err := ValidatePath(destPath, "", noLocalPathCheck); err != nil {
 			return fmt.Errorf("invalid destination path: %w", err)
 		}
 
