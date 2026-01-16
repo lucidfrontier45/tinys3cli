@@ -95,6 +95,10 @@ func (uploader *Uploader) Submit(localPath, remoteDirPath, bucketName string) er
 	// strip final slash
 	localPath = strings.TrimSuffix(localPath, "/")
 
+	if err := ValidatePath(localPath, ""); err != nil {
+		return fmt.Errorf("invalid local path: %w", err)
+	}
+
 	if info.IsDir() {
 		_, prefixLen := calcLocalDirPrefix(localPath)
 
@@ -110,6 +114,13 @@ func (uploader *Uploader) Submit(localPath, remoteDirPath, bucketName string) er
 
 				if !d.IsDir() {
 					path := path
+					if err := ValidatePath(path, localPath); err != nil {
+						walkErr.Errors = append(
+							walkErr.Errors,
+							fmt.Errorf("invalid path %q: %w", path, err),
+						)
+						return nil
+					}
 					wp.Submit(func() {
 						err2 := doUpload(client, path, path[prefixLen:], remoteDirPath, bucketName)
 						if err2 != nil {

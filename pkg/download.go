@@ -121,6 +121,10 @@ func (downloader *Downloader) Submit(
 			return fmt.Errorf("cannot make directory, %s is a file", localPath)
 		}
 
+		if err := ValidatePath(localPath, ""); err != nil {
+			return fmt.Errorf("invalid local path: %w", err)
+		}
+
 		listResult, err := client.ListObjectsV2(context.TODO(), &s3.ListObjectsV2Input{
 			Bucket: aws.String(bucketName),
 			Prefix: aws.String(remotePath),
@@ -135,6 +139,12 @@ func (downloader *Downloader) Submit(
 			if strings.HasSuffix(*obj.Key, "/") {
 				continue
 			}
+
+			relPath := (*obj.Key)[prefixLen:]
+			if err := ValidatePath(relPath, localPath); err != nil {
+				return fmt.Errorf("invalid remote path %q: %w", *obj.Key, err)
+			}
+
 			wp.Submit(func() {
 				dirPath, fileName := path.Split(*obj.Key)
 				dirPath = path.Join(localPath, dirPath[prefixLen:])
@@ -156,12 +166,20 @@ func (downloader *Downloader) Submit(
 
 	} else {
 		_, filename := path.Split(remotePath)
+		if err := ValidatePath(filename, ""); err != nil {
+			return fmt.Errorf("invalid remote path: %w", err)
+		}
+
 		var destPath string
 		info, err := os.Stat(localPath)
 		if err == nil && info.IsDir() {
 			destPath = path.Join(localPath, filename)
 		} else {
 			destPath = localPath
+		}
+
+		if err := ValidatePath(destPath, ""); err != nil {
+			return fmt.Errorf("invalid destination path: %w", err)
 		}
 
 		wp.Submit(func() {

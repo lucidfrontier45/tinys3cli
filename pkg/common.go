@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"path/filepath"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -47,6 +48,10 @@ func ParseS3URI(uriStr string) (bucketName, remotePath string, err error) {
 		remotePath = uri.Path[1:]
 	}
 
+	if err := ValidatePath(remotePath, ""); err != nil {
+		return "", "", fmt.Errorf("invalid remote path: %w", err)
+	}
+
 	return uri.Host, remotePath, nil
 }
 
@@ -63,4 +68,37 @@ func ListObjects(client *s3.Client, uriStr string) (*s3.ListObjectsV2Output, err
 		Bucket: aws.String(bucketName),
 		Prefix: aws.String(path),
 	})
+}
+
+// ValidatePath checks if a path is safe and stays within the base directory.
+// It rejects paths containing directory traversal sequences (../ or ..\)
+// and ensures the resolved path does not escape the base directory.
+func ValidatePath(path, baseDir string) error {
+	path = filepath.ToSlash(path)
+	baseDir = filepath.ToSlash(baseDir)
+
+	if strings.Contains(path, "../") || strings.Contains(path, "..\\") {
+		return fmt.Errorf("path %q contains directory traversal sequence", path)
+	}
+
+	if strings.HasPrefix(path, "..") {
+		return fmt.Errorf("path %q starts with directory traversal", path)
+	}
+
+	if baseDir != "" {
+		absBase, err := filepath.Abs(baseDir)
+		if err != nil {
+			return fmt.Errorf("failed to resolve base directory: %w", err)
+		}
+		absPath := filepath.Join(absBase, path)
+		relPath, err := filepath.Rel(absBase, absPath)
+		if err != nil {
+			return fmt.Errorf("path validation failed: %w", err)
+		}
+		if strings.HasPrefix(relPath, "..") {
+			return fmt.Errorf("path %q escapes base directory %q", path, baseDir)
+		}
+	}
+
+	return nil
 }
