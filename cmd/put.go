@@ -30,7 +30,7 @@ var putCmd = &cobra.Command{
 		if err != nil {
 			n_jobs = 4
 		}
-		uploader, err := tinys3cli.NewS3Uploader(n_jobs)
+		uploader, err := tinys3cli.NewUploader(n_jobs)
 		if err != nil {
 			return fmt.Errorf("failed to create uploader: %w", err)
 		}

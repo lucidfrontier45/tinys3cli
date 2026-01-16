@@ -33,6 +33,7 @@ Detect the existing layout or request guidance for new projects:
 - **Error Handling:** Handle all errors explicitly. Do not use `_` without a documented reason.
 - **Documentation:** Every exported identifier must have a comment starting with its name.
 - **V2 Config:** Ensure `.golangci.yml` uses `version: "2"`.
+- **LSP Warnings:** Ignore unused imports/warnings from LSP; they will be resolved by the linter's autofix and formatter steps.
 
 ## Preparation for Human Review
 - Ensure `go mod tidy` and `golangci-lint fmt` have been run.

@@ -13,10 +13,8 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/gammazero/workerpool"
 )
 
 func doUpload(client *s3.Client, localPath, name, remoteDirPath, bucketName string) error {
@@ -47,42 +45,44 @@ func doUpload(client *s3.Client, localPath, name, remoteDirPath, bucketName stri
 	return err
 }
 
-// S3Uploader handles S3 upload operations.
-type S3Uploader struct {
-	client    *s3.Client
-	wp        *workerpool.WorkerPool
-	mux       sync.Mutex
-	lasterror error
+type WalkError struct {
+	Errors []error
 }
 
-// NewS3Uploader creates a new S3 uploader with the specified number of jobs.
-func NewS3Uploader(n_jobs int) (S3Uploader, error) {
-	client, err := CreateClient()
-	if err != nil {
-		return S3Uploader{}, err
+func (e *WalkError) Error() string {
+	if len(e.Errors) == 0 {
+		return ""
 	}
-	return S3Uploader{client: client, wp: workerpool.New(n_jobs), mux: sync.Mutex{}}, nil
+	return fmt.Sprintf("%d errors occurred during walk", len(e.Errors))
 }
 
-// GetLastErr returns the last error encountered during upload.
-func (uploader *S3Uploader) GetLastErr() error {
-	return uploader.lasterror
+func calcLocalDirPrefix(localPath string) (string, int) {
+	localPath = strings.TrimSuffix(localPath, "/")
+	splt := strings.Split(localPath, "/")
+	n := len(splt)
+	if n > 0 {
+		prefix := strings.Join(splt[:n-1], "/")
+		return prefix, len(prefix)
+	}
+	return "", 0
 }
 
-// SetLastErr sets the last error.
-func (uploader *S3Uploader) SetLastErr(err error) {
-	uploader.mux.Lock()
-	defer uploader.mux.Unlock()
-	uploader.lasterror = err
+// Uploader handles S3 upload operations.
+type Uploader struct {
+	*baseWorker
 }
 
-// Wait blocks until all upload jobs are complete.
-func (uploader *S3Uploader) Wait() {
-	uploader.wp.StopWait()
+// NewUploader creates a new S3 uploader with the specified number of jobs.
+func NewUploader(n_jobs int) (Uploader, error) {
+	bw, err := newBaseWorker(n_jobs)
+	if err != nil {
+		return Uploader{}, err
+	}
+	return Uploader{baseWorker: bw}, nil
 }
 
 // Submit queues an upload job for the given local path to the S3 bucket.
-func (uploader *S3Uploader) Submit(localPath, remoteDirPath, bucketName string) error {
+func (uploader *Uploader) Submit(localPath, remoteDirPath, bucketName string) error {
 	info, err := os.Stat(localPath)
 	if err != nil {
 		return err
@@ -95,39 +95,40 @@ func (uploader *S3Uploader) Submit(localPath, remoteDirPath, bucketName string) 
 	localPath = strings.TrimSuffix(localPath, "/")
 
 	if info.IsDir() {
-		splt := strings.Split(localPath, "/")
-		n := len(splt)
-		localDirPrefix := ""
-		if n > 0 {
-			localDirPrefix = strings.Join(splt[:n-1], "/")
+		_, prefixLen := calcLocalDirPrefix(localPath)
+
+		walkErr := &WalkError{Errors: make([]error, 0)}
+
+		walkDirErr := filepath.WalkDir(
+			localPath,
+			func(path string, d fs.DirEntry, walkErrIn error) error {
+				if walkErrIn != nil {
+					walkErr.Errors = append(walkErr.Errors, walkErrIn)
+					return nil
+				}
+
+				if !d.IsDir() {
+					path := path
+					wp.Submit(func() {
+						err2 := doUpload(client, path, path[prefixLen:], remoteDirPath, bucketName)
+						if err2 != nil {
+							log.Printf("couldn't upload %s, %s", path, err2)
+							uploader.SetLastErr(err2)
+						}
+					})
+				}
+
+				return nil
+			},
+		)
+		if walkDirErr != nil {
+			return walkErr
 		}
-		prefixLen := len(localDirPrefix)
-
-		err = filepath.WalkDir(localPath, func(path string, d fs.DirEntry, err error) error {
-			if err != nil {
-				// handle possible path err, just in case...
-				return err
-			}
-
-			if !d.IsDir() {
-				path := path
-				wp.Submit(func() {
-					err2 := doUpload(client, path, path[prefixLen:], remoteDirPath, bucketName)
-					if err2 != nil {
-						fmt.Printf("couldn't upload %s, %s", path, err2)
-						uploader.SetLastErr(err2)
-					}
-				})
-			}
-
-			return nil
-		})
-		return err
 	} else {
 		wp.Submit(func() {
 			err2 := doUpload(client, localPath, info.Name(), remoteDirPath, bucketName)
 			if err2 != nil {
-				fmt.Printf("couldn't upload %s, %s", localPath, err2)
+				log.Printf("couldn't upload %s, %s", localPath, err2)
 				uploader.SetLastErr(err2)
 			}
 		})

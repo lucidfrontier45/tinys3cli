@@ -34,7 +34,7 @@ var getCmd = &cobra.Command{
 			n_jobs = 4
 		}
 
-		downloader, err := tinys3cli.NewS3Downloader(n_jobs)
+		downloader, err := tinys3cli.NewDownloader(n_jobs)
 		if err != nil {
 			return fmt.Errorf("failed to create downloader: %w", err)
 		}
