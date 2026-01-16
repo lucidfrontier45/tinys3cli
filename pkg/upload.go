@@ -45,6 +45,7 @@ func doUpload(client *s3.Client, localPath, name, remoteDirPath, bucketName stri
 	return err
 }
 
+// WalkError accumulates errors encountered during directory walk operations.
 type WalkError struct {
 	Errors []error
 }

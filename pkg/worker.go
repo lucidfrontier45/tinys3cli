@@ -10,6 +10,7 @@ import (
 	"github.com/gammazero/workerpool"
 )
 
+// baseWorker provides common functionality for S3 operations with parallel worker support.
 type baseWorker struct {
 	client    *s3.Client
 	wp        *workerpool.WorkerPool
@@ -17,6 +18,7 @@ type baseWorker struct {
 	lasterror error
 }
 
+// newBaseWorker creates a new baseWorker with the specified number of parallel jobs.
 func newBaseWorker(n_jobs int) (*baseWorker, error) {
 	client, err := CreateClient()
 	if err != nil {
@@ -29,16 +31,19 @@ func newBaseWorker(n_jobs int) (*baseWorker, error) {
 	}, nil
 }
 
+// GetLastErr returns the last error that occurred during worker operations.
 func (w *baseWorker) GetLastErr() error {
 	return w.lasterror
 }
 
+// SetLastErr sets the last error that occurred during worker operations.
 func (w *baseWorker) SetLastErr(err error) {
 	w.mux.Lock()
 	defer w.mux.Unlock()
 	w.lasterror = err
 }
 
+// Wait blocks until all pending jobs have completed.
 func (w *baseWorker) Wait() {
 	w.wp.StopWait()
 }
