@@ -12,7 +12,7 @@ A Tiny S3 Client written in Go. Upload, download, and list S3 objects with paral
 
 ## Requirements
 
-- Go 1.21+
+- Go 1.25+
 - AWS credentials (via `~/.aws/credentials` or environment variables)
 
 ## Installation
