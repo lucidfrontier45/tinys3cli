@@ -1,4 +1,4 @@
-# tinys3cli
+<img src="logo.png" alt="Logo" width="700">
 
 A Tiny S3 Client written in Go. Upload, download, and list S3 objects with parallel operations.
 
