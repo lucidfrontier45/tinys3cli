@@ -2,6 +2,7 @@ package tinys3cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -36,13 +37,21 @@ func doDownload(
 	if err != nil {
 		return err
 	}
-	defer output.Body.Close()
+	defer func() {
+		if cerr := output.Body.Close(); cerr != nil {
+			err = errors.Join(err, cerr)
+		}
+	}()
 
 	fp, err := os.Create(localPath)
 	if err != nil {
 		return err
 	}
-	defer fp.Close()
+	defer func() {
+		if cerr := fp.Close(); cerr != nil {
+			err = errors.Join(err, cerr)
+		}
+	}()
 
 	n, err := io.Copy(fp, output.Body)
 	log.Printf("written %d bytes to %s", n, localPath)

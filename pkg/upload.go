@@ -2,6 +2,7 @@ package tinys3cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log"
@@ -21,7 +22,11 @@ func doUpload(client *s3.Client, localPath, name, remoteDirPath, bucketName stri
 		return err
 	}
 
-	defer fp.Close()
+	defer func() {
+		if cerr := fp.Close(); cerr != nil {
+			err = errors.Join(err, cerr)
+		}
+	}()
 
 	key := ""
 	if len(remoteDirPath) > 0 {
