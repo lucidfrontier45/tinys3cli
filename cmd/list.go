@@ -1,13 +1,11 @@
 /*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
+Copyright © 2022 Du Shiqiao <lucidfrontier.45@gmail.com>
 */
 package cmd
 
 import (
 	"fmt"
-	"log"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	tinys3cli "github.com/lucidfrontier45/tinys3cli/pkg"
 	"github.com/spf13/cobra"
 )
@@ -15,19 +13,25 @@ import (
 // listCmd represents the list command
 var listCmd = &cobra.Command{
 	Use:   "list S3URI",
-	Short: "list objects",
-	Run: func(cmd *cobra.Command, args []string) {
-		uriStr := args[0]
-		client := tinys3cli.CreateClient()
-		output, err := tinys3cli.ListObjects(client, uriStr)
+	Short: "list objects in S3 bucket",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) < 1 {
+			return fmt.Errorf("requires S3 URI argument")
+		}
+		client, err := tinys3cli.CreateClient()
 		if err != nil {
-			log.Fatal(err)
+			return fmt.Errorf("failed to create client: %w", err)
+		}
+		output, err := tinys3cli.ListObjects(client, args[0])
+		if err != nil {
+			return fmt.Errorf("failed to list objects: %w", err)
 		}
 
-		log.Println("first page results:")
+		fmt.Println("first page results:")
 		for _, object := range output.Contents {
-			fmt.Printf("key=%s size=%d\n", aws.ToString(object.Key), object.Size)
+			fmt.Printf("key=%s size=%d\n", *object.Key, object.Size)
 		}
+		return nil
 	},
 }
 
@@ -35,12 +39,4 @@ func init() {
 	rootCmd.AddCommand(listCmd)
 
 	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// listCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// listCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

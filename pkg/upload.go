@@ -1,3 +1,6 @@
+/*
+Copyright © 2022 Du Shiqiao <lucidfrontier.45@gmail.com>
+*/
 package tinys3cli
 
 import (
@@ -44,6 +47,7 @@ func doUpload(client *s3.Client, localPath, name, remoteDirPath, bucketName stri
 	return err
 }
 
+// S3Uploader handles S3 upload operations.
 type S3Uploader struct {
 	client    *s3.Client
 	wp        *workerpool.WorkerPool
@@ -51,24 +55,33 @@ type S3Uploader struct {
 	lasterror error
 }
 
-func NewS3Uploader(n_jobs int) S3Uploader {
-	return S3Uploader{client: CreateClient(), wp: workerpool.New(n_jobs), mux: sync.Mutex{}}
+// NewS3Uploader creates a new S3 uploader with the specified number of jobs.
+func NewS3Uploader(n_jobs int) (S3Uploader, error) {
+	client, err := CreateClient()
+	if err != nil {
+		return S3Uploader{}, err
+	}
+	return S3Uploader{client: client, wp: workerpool.New(n_jobs), mux: sync.Mutex{}}, nil
 }
 
+// GetLastErr returns the last error encountered during upload.
 func (uploader *S3Uploader) GetLastErr() error {
 	return uploader.lasterror
 }
 
+// SetLastErr sets the last error.
 func (uploader *S3Uploader) SetLastErr(err error) {
 	uploader.mux.Lock()
 	defer uploader.mux.Unlock()
 	uploader.lasterror = err
 }
 
+// Wait blocks until all upload jobs are complete.
 func (uploader *S3Uploader) Wait() {
 	uploader.wp.StopWait()
 }
 
+// Submit queues an upload job for the given local path to the S3 bucket.
 func (uploader *S3Uploader) Submit(localPath, remoteDirPath, bucketName string) error {
 	info, err := os.Stat(localPath)
 	if err != nil {

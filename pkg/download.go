@@ -1,3 +1,6 @@
+/*
+Copyright © 2022 Du Shiqiao <lucidfrontier.45@gmail.com>
+*/
 package tinys3cli
 
 import (
@@ -59,6 +62,7 @@ func doDownload(
 	return err
 }
 
+// S3Downloader handles S3 download operations.
 type S3Downloader struct {
 	client    *s3.Client
 	wp        *workerpool.WorkerPool
@@ -66,24 +70,33 @@ type S3Downloader struct {
 	lasterror error
 }
 
-func NewS3Downloader(n_jobs int) S3Downloader {
-	return S3Downloader{client: CreateClient(), wp: workerpool.New(n_jobs), mux: sync.Mutex{}}
+// NewS3Downloader creates a new S3 downloader with the specified number of jobs.
+func NewS3Downloader(n_jobs int) (S3Downloader, error) {
+	client, err := CreateClient()
+	if err != nil {
+		return S3Downloader{}, err
+	}
+	return S3Downloader{client: client, wp: workerpool.New(n_jobs), mux: sync.Mutex{}}, nil
 }
 
+// GetLastErr returns the last error encountered during download.
 func (downloader *S3Downloader) GetLastErr() error {
 	return downloader.lasterror
 }
 
+// SetLastErr sets the last error.
 func (downloader *S3Downloader) SetLastErr(err error) {
 	downloader.mux.Lock()
 	defer downloader.mux.Unlock()
 	downloader.lasterror = err
 }
 
+// Wait blocks until all download jobs are complete.
 func (downloader *S3Downloader) Wait() {
 	downloader.wp.StopWait()
 }
 
+// Submit queues a download job for the given S3 path to the local path.
 func (downloader *S3Downloader) Submit(
 	localPath, remotePath, bucketName string,
 	recursive bool,

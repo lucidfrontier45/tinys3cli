@@ -1,9 +1,11 @@
+/*
+Copyright © 2022 Du Shiqiao <lucidfrontier.45@gmail.com>
+*/
 package tinys3cli
 
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/url"
 	"strings"
 
@@ -12,17 +14,18 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
+// Version holds the application version.
 var Version = "0.3.3"
 
-func CreateClient() *s3.Client {
+func CreateClient() (*s3.Client, error) {
 	// Load the Shared AWS Configuration (~/.aws/config)
 	cfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	// Create an Amazon S3 service client
-	return s3.NewFromConfig(cfg)
+	return s3.NewFromConfig(cfg), nil
 }
 
 func ParseS3URI(uriStr string) (bucketName, remotePath string, err error) {

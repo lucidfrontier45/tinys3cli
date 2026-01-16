@@ -1,10 +1,10 @@
 /*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
+Copyright © 2022 Du Shiqiao <lucidfrontier.45@gmail.com>
 */
 package cmd
 
 import (
-	"log"
+	"fmt"
 
 	tinys3cli "github.com/lucidfrontier45/tinys3cli/pkg"
 	"github.com/spf13/cobra"
@@ -14,14 +14,17 @@ import (
 var getCmd = &cobra.Command{
 	Use:   "get S3URI localPath",
 	Short: "download file or directory ",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) < 2 {
+			return fmt.Errorf("requires S3 URI and local path arguments")
+		}
 		var uriStr, localPath string
 		uriStr = args[0]
 		localPath = args[1]
 
 		bucketName, remotePath, err := tinys3cli.ParseS3URI(uriStr)
 		if err != nil {
-			log.Fatal(err)
+			return fmt.Errorf("invalid S3 URI: %w", err)
 		}
 
 		recursive, _ := cmd.Flags().GetBool("recursive")
@@ -31,24 +34,28 @@ var getCmd = &cobra.Command{
 			n_jobs = 4
 		}
 
-		downloader := tinys3cli.NewS3Downloader(n_jobs)
+		downloader, err := tinys3cli.NewS3Downloader(n_jobs)
+		if err != nil {
+			return fmt.Errorf("failed to create downloader: %w", err)
+		}
 
 		versionId, err := cmd.Flags().GetString("version-id")
 		if err != nil {
 			versionId = ""
 		}
 		if versionId != "" && recursive {
-			log.Fatal("Error: Version ID cannot be specified when downloading recursively")
+			return fmt.Errorf("version ID cannot be specified when downloading recursively")
 		}
 
 		err = downloader.Submit(localPath, remotePath, bucketName, recursive, versionId)
 		if err != nil {
-			log.Fatal(err)
+			return fmt.Errorf("failed to submit download: %w", err)
 		}
 		downloader.Wait()
 		if downloader.GetLastErr() != nil {
-			log.Fatal(downloader.GetLastErr())
+			return fmt.Errorf("download failed: %w", downloader.GetLastErr())
 		}
+		return nil
 	},
 }
 
@@ -58,12 +65,4 @@ func init() {
 	getCmd.Flags().IntP("jobs", "j", 4, "max parallel jobs")
 	getCmd.Flags().StringP("version-id", "v", "", "file version ID")
 	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// getCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// getCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
