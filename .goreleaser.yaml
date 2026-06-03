@@ -1,0 +1,59 @@
+version: 2
+
+project_name: tinys3cli
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w
+      - -X github.com/lucidfrontier45/tinys3cli/pkg.Version={{ .Version }}
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: darwin
+        goarch: amd64
+
+archives:
+  - format: binary
+    name_template: >-
+      {{ .ProjectName }}-{{ .Os }}-{{ .Arch }}
+      {{- if eq .Os "windows" }}.exe{{ end }}
+
+upx:
+  - enabled: true
+    compress: best
+    lzma: true
+
+dockers:
+  - image_templates:
+      - ghcr.io/lucidfrontier45/tinys3cli:{{ .Tag }}
+      - ghcr.io/lucidfrontier45/tinys3cli:latest
+    dockerfile: Dockerfile.goreleaser
+    build_flag_templates:
+      - --label=org.opencontainers.image.version={{ .Version }}
+      - --label=org.opencontainers.image.revision={{ .FullCommit }}
+      - --label=org.opencontainers.image.source={{ .GitURL }}
+
+  - image_templates:
+      - ghcr.io/lucidfrontier45/tinys3cli:{{ .Tag }}-arm64
+    dockerfile: Dockerfile.goreleaser
+    goarch: arm64
+    build_flag_templates:
+      - --label=org.opencontainers.image.version={{ .Version }}
+      - --label=org.opencontainers.image.revision={{ .FullCommit }}
+      - --label=org.opencontainers.image.source={{ .GitURL }}
+
+release:
+  github:
+    owner: lucidfrontier45
+    name: tinys3cli

@@ -16,7 +16,7 @@ import (
 )
 
 // Version holds the application version.
-var Version = "0.4.0"
+var Version = "dev"
 
 // CreateClient creates an S3 client using the default AWS configuration.
 // It loads credentials and region from ~/.aws/config and ~/.aws/credentials.

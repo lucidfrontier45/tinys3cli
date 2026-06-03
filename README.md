@@ -29,11 +29,23 @@ go install github.com/lucidfrontier45/tinys3cli@latest
 
 ### Building from Source
 
+Builds without a version tag will show `dev` as the version:
+
 ```sh
 git clone https://github.com/lucidfrontier45/tinys3cli.git
 cd tinys3cli
 go build -o tinys3cli .
 ```
+
+### Using GoReleaser
+
+Build all platforms with version injection from the nearest git tag:
+
+```sh
+goreleaser build --snapshot --clean
+```
+
+Binaries are output to `dist/`.
 
 ### Docker
 

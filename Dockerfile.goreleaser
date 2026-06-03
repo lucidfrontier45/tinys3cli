@@ -1,0 +1,3 @@
+FROM alpine
+COPY tinys3cli /tinys3cli
+ENTRYPOINT ["/tinys3cli"]
