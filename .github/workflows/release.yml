@@ -1,56 +1,38 @@
-name: Release Binaries
+name: Release
 
 on:
-  release:
-    types: [published]
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+  packages: write
 
 jobs:
-  build:
+  goreleaser:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - goos: windows
-            goarch: amd64
-            ext: .exe
-          - goos: windows
-            goarch: arm64
-            ext: .exe
-          - goos: linux
-            goarch: amd64
-            ext: ''
-          - goos: linux
-            goarch: arm64
-            ext: ''
-          - goos: darwin
-            goarch: arm64
-            ext: ''
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v6
         with:
-          go-version: '1.25'
+          go-version-file: go.mod
 
-      - name: Build binary
-        run: go build -o tinys3cli-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }} -ldflags="-s -w" .
-        env:
-          CGO_ENABLED: "0"
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-
-      - name: Install UPX
-        run: sudo apt update && sudo apt install -y upx
-
-      - name: Compress binary with UPX
-        if: matrix.goos != 'darwin' && !(matrix.goos == 'windows' && matrix.goarch == 'arm64')
-        run: upx --best --lzma tinys3cli-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
-
-      - name: Upload release asset
-        uses: softprops/action-gh-release@v1
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
         with:
-          files: tinys3cli-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: latest
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
