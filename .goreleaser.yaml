@@ -35,8 +35,8 @@ upx:
 
 dockers:
   - image_templates:
-      - ghcr.io/lucidfrontier45/tinys3cli:{{ .Tag }}
-      - ghcr.io/lucidfrontier45/tinys3cli:latest
+      - ghcr.io/lucidfrontier45/tinys3cli:{{ .Tag }}-amd64
+      - ghcr.io/lucidfrontier45/tinys3cli:latest-amd64
     dockerfile: Dockerfile.goreleaser
     build_flag_templates:
       - --label=org.opencontainers.image.version={{ .Version }}
@@ -45,12 +45,24 @@ dockers:
 
   - image_templates:
       - ghcr.io/lucidfrontier45/tinys3cli:{{ .Tag }}-arm64
+      - ghcr.io/lucidfrontier45/tinys3cli:latest-arm64
     dockerfile: Dockerfile.goreleaser
     goarch: arm64
     build_flag_templates:
       - --label=org.opencontainers.image.version={{ .Version }}
       - --label=org.opencontainers.image.revision={{ .FullCommit }}
       - --label=org.opencontainers.image.source={{ .GitURL }}
+
+docker_manifests:
+  - name_template: ghcr.io/lucidfrontier45/tinys3cli:{{ .Tag }}
+    image_templates:
+      - ghcr.io/lucidfrontier45/tinys3cli:{{ .Tag }}-amd64
+      - ghcr.io/lucidfrontier45/tinys3cli:{{ .Tag }}-arm64
+
+  - name_template: ghcr.io/lucidfrontier45/tinys3cli:latest
+    image_templates:
+      - ghcr.io/lucidfrontier45/tinys3cli:latest-amd64
+      - ghcr.io/lucidfrontier45/tinys3cli:latest-arm64
 
 release:
   github:
